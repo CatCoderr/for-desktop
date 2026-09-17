@@ -23,30 +23,59 @@ jobs:
           submodules: recursive
 
       - name: Setup Mise
+        if: runner.os == 'macOS'
         uses: immich-app/devtools/actions/use-mise@7b8610a904d57da241e4ddba17fa62b62b15aed4 # use-mise-action-v2.0.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Keep node available to pnpm's Windows postinstall scripts.
       - name: Setup Node.js
+        if: runner.os == 'Windows'
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      - name: Setup pnpm
+        if: runner.os == 'Windows'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.17.0
+          run_install: false
+
       - name: Checkout assets
+        if: runner.os == 'macOS'
         run: mise assets
 
       - name: Install dependencies
+        if: runner.os == 'macOS'
         run: mise install:frozen
 
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        run: pnpm install --frozen-lockfile
+
       - name: Lint
+        if: runner.os == 'macOS'
         run: mise lint
 
+      - name: Lint Windows
+        if: runner.os == 'Windows'
+        run: pnpm run lint
+
       - name: Format
+        if: runner.os == 'macOS'
         run: mise format
 
+      - name: Format Windows
+        if: runner.os == 'Windows'
+        run: pnpm run fmt
+
       - name: Build
+        if: runner.os == 'macOS'
         run: mise make
+
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        run: pnpm run make
 
       - name: Upload desktop artifacts
         uses: actions/upload-artifact@v4
