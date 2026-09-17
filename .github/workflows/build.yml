@@ -1,21 +1,20 @@
-name: Build & Lint
+name: Build Desktop
 
 on:
   push:
-    branches:
-      - main
-    paths-ignore:
-      - ".github/**"
-      - "!.github/workflows/build.yml"
-      - ".vscode/**"
-      - ".gitignore"
-      - "README.md"
   pull_request:
 
 jobs:
   build:
-    name: Build App
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -41,4 +40,11 @@ jobs:
         run: mise format
 
       - name: Build
-        run: mise build
+        run: mise make
+
+      - name: Upload desktop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stoat-desktop-${{ runner.os }}
+          path: out/make
+          if-no-files-found: error

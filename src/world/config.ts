@@ -7,6 +7,12 @@ ipcRenderer.on("config", (_, data) => (config = data));
 contextBridge.exposeInMainWorld("desktopConfig", {
   get: () => config,
   set: (config: DesktopConfig) => ipcRenderer.send("config", config),
+  setServerUrl: (value: string) =>
+    ipcRenderer.invoke("setServerUrl", value) as Promise<{
+      ok: boolean;
+      value?: string;
+      error?: string;
+    }>,
   getAutostart() {
     return ipcRenderer.invoke("getAutostart") as Promise<boolean>;
   },

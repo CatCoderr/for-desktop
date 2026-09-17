@@ -4,9 +4,13 @@ import { ipcMain } from "electron";
 import Store from "electron-store";
 
 import { destroyDiscordRpc, initDiscordRpc } from "./discordRpc";
-import { mainWindow } from "./window";
+import { getBuildUrl, mainWindow } from "./window";
 
 const schema = {
+  serverUrl: {
+    type: "string",
+    minLength: 1,
+  } as JSONSchema.String,
   firstLaunch: {
     type: "boolean",
   } as JSONSchema.Boolean,
@@ -53,6 +57,7 @@ const schema = {
 const store = new Store({
   schema,
   defaults: {
+    serverUrl: "https://stoat.chat/app",
     firstLaunch: true,
     customFrame: true,
     minimiseToTray: true,
@@ -76,6 +81,7 @@ const store = new Store({
 class Config {
   sync() {
     mainWindow.webContents.send("config", {
+      serverUrl: this.serverUrl,
       firstLaunch: this.firstLaunch,
       customFrame: this.customFrame,
       minimiseToTray: this.minimiseToTray,
@@ -85,6 +91,20 @@ class Config {
       discordRpc: this.discordRpc,
       windowState: this.windowState,
     });
+  }
+
+  get serverUrl() {
+    return (store as never as { get(k: string): string }).get("serverUrl");
+  }
+
+  set serverUrl(value: string) {
+    const normalized = normalizeServerUrl(value);
+    (store as never as { set(k: string, value: string): void }).set(
+      "serverUrl",
+      normalized,
+    );
+
+    this.sync();
   }
 
   get firstLaunch() {
@@ -211,9 +231,34 @@ class Config {
 
 export const config = new Config();
 
+export function normalizeServerUrl(value: string) {
+  const candidate = value.trim();
+  const url = new URL(
+    /^[a-z][a-z\d+.-]*:\/\//i.test(candidate)
+      ? candidate
+      : `https://${candidate}`,
+  );
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Server URL must use http or https");
+  }
+
+  if (url.username || url.password) {
+    throw new Error("Server URL must not contain credentials");
+  }
+
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
+}
+
 ipcMain.on("config", (_, newConfig: Partial<DesktopConfig>) => {
   console.info("Received new configuration", newConfig);
   Object.entries(newConfig).forEach(
     ([key, value]) => (config[key as keyof DesktopConfig] = value as never),
   );
+
+  if ("serverUrl" in newConfig) {
+    mainWindow.loadURL(getBuildUrl().toString());
+  }
 });

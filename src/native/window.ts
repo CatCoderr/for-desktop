@@ -20,11 +20,13 @@ import { updateTrayMenu } from "./tray";
 export let mainWindow: BrowserWindow;
 
 // currently in-use build
-export const BUILD_URL = new URL(
-  app.commandLine.hasSwitch("force-server")
-    ? app.commandLine.getSwitchValue("force-server")
-    : /*MAIN_WINDOW_VITE_DEV_SERVER_URL ??*/ "https://stoat.chat/app",
-);
+export function getBuildUrl() {
+  return new URL(
+    app.commandLine.hasSwitch("force-server")
+      ? app.commandLine.getSwitchValue("force-server")
+      : config.serverUrl,
+  );
+}
 
 // internal window state
 let shouldQuit = false;
@@ -90,7 +92,7 @@ export function createMainWindow() {
 
   // load the entrypoint
   mainWindow
-    .loadURL(BUILD_URL.toString())
+    .loadURL(getBuildUrl().toString())
     .then(() => mainWindow.webContents.reload());
 
   // minimise window to tray
@@ -277,4 +279,23 @@ export function quitApp() {
 // Ensure global app quit works properly
 app.on("before-quit", () => {
   shouldQuit = true;
+});
+
+ipcMain.handle("setServerUrl", (event, value: string) => {
+  try {
+    config.serverUrl = value;
+    mainWindow.loadURL(getBuildUrl().toString());
+
+    const sourceWindow = BrowserWindow.fromWebContents(event.sender);
+    if (sourceWindow && sourceWindow !== mainWindow) {
+      sourceWindow.close();
+    }
+
+    return { ok: true, value: config.serverUrl };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Invalid server URL",
+    };
+  }
 });
