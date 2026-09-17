@@ -64,10 +64,6 @@ jobs:
         if: runner.os == 'macOS'
         run: mise format
 
-      - name: Format Windows
-        if: runner.os == 'Windows'
-        run: pnpm run fmt
-
       - name: Build
         if: runner.os == 'macOS'
         run: mise make
