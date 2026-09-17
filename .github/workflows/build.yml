@@ -44,6 +44,10 @@ jobs:
         if: runner.os == 'macOS'
         run: mise assets
 
+      - name: Checkout Windows assets
+        if: runner.os == 'Windows'
+        run: git -c submodule."assets".update=checkout submodule update --init assets
+
       - name: Install dependencies
         if: runner.os == 'macOS'
         run: mise install:frozen
